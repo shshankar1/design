@@ -31,7 +31,10 @@ Kafka is essentially a **distributed WAL**. Every message produced to a topic pa
 
 ## 3. Kafka WAL Flow (Diagram)
 
-![Kafka WAL Flow](kafka_wal_flow.png)
+<img width="1589" height="1010" alt="image" src="https://github.com/user-attachments/assets/3f8c31c0-59a5-49e3-9a0d-0729e9d02c01" />
+
+
+
 
 *Explanation:*
 - Producer sends records to leader broker.
@@ -58,7 +61,7 @@ Kafka is essentially a **distributed WAL**. Every message produced to a topic pa
 
 ## 5. Page Cache vs Log Segment Flow (Diagram)
 
-![Kafka Page Cache vs Log Segment](kafka_pagecache_vs_log.png)
+<img width="1745" height="1010" alt="image" src="https://github.com/user-attachments/assets/e0160027-b13f-463a-9833-29046e54a372" />
 
 *Explanation:*
 - Producers write to page cache first (fast).
