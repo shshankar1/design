@@ -204,3 +204,120 @@ When the broker restarts, it repairs and syncs its log with the current leader.
   - B catches up → rejoins ISR
 
 
+# Kafka Consumers and Follower Nodes
+
+## ❓ Question
+**How does a consumer get to know that there is a record ready for consumption if it is connected to a follower node?**
+
+---
+
+## ✅ Answer
+
+In Apache Kafka, **consumers never consume directly from follower nodes**.  
+Consumers always fetch from the **leader replica** of a partition. Followers exist only for **replication** and **fault tolerance**.
+
+If a consumer mistakenly contacts a follower for data:
+- The follower responds with a **`NotLeaderForPartition`** error.
+- The consumer client updates its **metadata cache** (partition → leader mapping) by querying the cluster.
+- The consumer retries its fetch from the correct **leader broker**.
+
+---
+
+## 🔹 How Consumers Know Records Are Ready
+- Consumers use a **poll()** loop to request data from the leader broker.
+- The leader tracks the **High Watermark (HW)** = highest offset replicated to all in-sync replicas.
+- Only records up to the **HW** are exposed to consumers, ensuring they never read data that could be lost in a leader crash.
+
+---
+
+## 🔹 Flow
+
+1. **Producer → Leader**  
+   - Producer sends records to the partition leader.  
+   - Leader appends them to its WAL (log segment).  
+
+2. **Leader → Followers (Replication)**  
+   - ISR (in-sync replicas) followers pull records from the leader and append to their own WALs.  
+
+3. **Consumer → Leader**  
+   - Consumer polls the leader for records starting from its last committed offset.  
+   - Leader returns records ≤ **High Watermark (HW)**.  
+
+4. **Consumer accidentally contacting a follower**  
+   - Follower replies with `NotLeaderForPartition`.  
+   - Consumer refreshes metadata and connects to the correct leader.
+
+---
+
+## 🔹 Diagram
+
+![Kafka Consumer Path](kafka_consumer_path.png)
+
+- Producers write to the **Leader**.  
+- Followers replicate data into their own WALs.  
+- Consumers **poll only from the Leader**.  
+- If they mistakenly hit a follower, they are redirected.  
+- Leader serves records up to the **HW** (safe, replicated data).  
+
+---
+
+## 🔹 Important Consumer Properties
+
+### `max.poll.records`
+- **Definition:** Maximum number of records returned by a single `poll()` call.  
+- **Purpose:** Controls batch size for processing.  
+- **Tuning:**  
+  - Higher → fewer network round trips, but more processing latency per batch.  
+  - Lower → faster responsiveness, but more frequent polls.  
+- **Example:**  
+  ```properties
+  max.poll.records=500
+→ Each poll will return up to 500 records at most.
+
+max.poll.interval.ms
+Definition: Maximum delay between two consecutive poll() calls before the broker considers the consumer dead and triggers a rebalance.
+
+Default: 300000 ms (5 minutes).
+
+Purpose: Ensures that a consumer that is “stuck” processing records without polling is removed from the group.
+
+Tuning:
+
+Must be set high enough to allow your longest batch processing to finish.
+
+If exceeded, the consumer will lose its partitions and cause group rebalance.
+
+Example:
+
+properties
+Copy
+Edit
+max.poll.interval.ms=600000
+→ Consumer can take up to 10 minutes to process a batch before re-polling.
+
+Relation Between the Two
+max.poll.records controls how much work is handed to the consumer at once.
+
+max.poll.interval.ms sets how long the consumer is allowed to process that work before re-polling.
+
+⚖️ Together they balance throughput vs. stability:
+
+Too high records + too low interval → risk of rebalance.
+
+Too low records → under-utilization of consumers.
+
+🔹 Key Points
+Consumers always fetch from leaders, not followers (except in special cases like KIP-392 Read Replicas).
+
+High Watermark (HW) ensures consumers see only committed data.
+
+Followers exist only for replication and failover.
+
+Redirection via NotLeaderForPartition keeps consumers aligned with leaders.
+
+Consumer tuning requires careful setting of max.poll.records and max.poll.interval.ms to balance throughput and avoid unnecessary rebalances.
+
+📌 Final Takeaway
+Consumers never read directly from followers.
+They poll leaders, who expose only replicated records (≤ HW). If a consumer mistakenly connects to a follower, Kafka redirects it to the leader.
+Consumer configs like max.poll.records and max.poll.interval.ms govern batch size and processing timeout, ensuring efficient and stable consumption.
