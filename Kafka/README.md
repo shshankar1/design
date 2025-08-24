@@ -194,13 +194,13 @@ When the broker restarts, it repairs and syncs its log with the current leader.
 ## 🔹 ASCII Timeline
 - Crash:
   - Broker B loses page cache (data not flushed)
-Other ISR replicas still have data → partition safe
+  - Other ISR replicas still have data → partition safe
 
-Restart:
-B reads checkpoints
-B validates tail & truncates invalid batches
-B aligns epochs with leader → truncates divergence
-B fetches missing records from leader
-B catches up → rejoins ISR
+- Restart:
+  - B reads checkpoints
+  - B validates tail & truncates invalid batches
+  - B aligns epochs with leader → truncates divergence
+  - B fetches missing records from leader
+  - B catches up → rejoins ISR
 
 
