@@ -144,3 +144,53 @@ min.insync.replicas=2
 acks=all
 unclean.leader.election.enable=false
 enable.idempotence=true
+
+
+# Kafka Broker Recovery After Crash with Unflushed Page Cache
+
+## ❓ Question
+**Once a broker node fails and it has some data in page cache which couldn’t be written in log segment, then how does the broker catch up once it comes back?**
+
+---
+
+## ✅ Answer
+
+When a Kafka broker crashes, any data that existed only in its **page cache** (not yet flushed to disk as a log segment write) is lost on that broker.  
+
+However, **Kafka’s durability model doesn’t rely on a single broker’s flush**. Instead, it relies on **quorum replication** and **High Watermark (HW)** to guarantee committed records are safe.  
+When the broker restarts, it repairs and syncs its log with the current leader.
+
+---
+
+## 🔹 Step-by-Step Recovery
+
+### 1. Boot & Log Scan
+- Broker reads **checkpoint files**:
+  - `recovery-point-offset-checkpoint` → last known flushed offset.
+  - `leader-epoch-checkpoint` → maps leader epochs to start offsets.
+- Active segment is opened, and `.index` / `.timeindex` files rebuilt if needed.
+
+### 2. Tail Validation & Truncation
+- Scan from recovery point to Log End Offset (LEO).
+- Validate record batch CRCs.
+- Truncate any **partial or corrupt tail records** left from crash.
+
+### 3. Compare with Leader (Find Divergence)
+- Current partition leader provides its **leader epoch history**.
+- Restarted broker aligns epochs with leader.
+- If it has any **uncommitted tail**, it is truncated to the leader’s log boundary.
+
+### 4. Catch-up via Replication
+- Broker issues **Fetch requests** to leader from its new LEO.
+- Leader streams missing records.
+- Broker appends them to its log (through page cache, flushed later).
+
+### 5. Rejoin ISR
+- Once caught up and replica lag ≤ threshold (`replica.lag.time.max.ms`), the broker is marked **in-sync** again.
+- From then, it can serve clients and even become leader again.
+
+---
+
+## 🔹 ASCII Timeline
+
+
