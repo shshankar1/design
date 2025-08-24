@@ -251,7 +251,8 @@ If a consumer mistakenly contacts a follower for data:
 
 ## 🔹 Diagram
 
-![Kafka Consumer Path](kafka_consumer_path.png)
+<img width="1900" height="1010" alt="image" src="https://github.com/user-attachments/assets/fadc8ffb-8516-45f3-960f-de6df09ee663" />
+
 
 - Producers write to the **Leader**.  
 - Followers replicate data into their own WALs.  
