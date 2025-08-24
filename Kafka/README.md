@@ -144,7 +144,7 @@ min.insync.replicas=2
 acks=all
 unclean.leader.election.enable=false
 enable.idempotence=true
-
+```
 
 # Kafka Broker Recovery After Crash with Unflushed Page Cache
 
