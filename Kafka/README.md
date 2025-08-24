@@ -192,8 +192,8 @@ When the broker restarts, it repairs and syncs its log with the current leader.
 ---
 
 ## 🔹 ASCII Timeline
-Crash:
-Broker B loses page cache (data not flushed)
+- Crash:
+-- Broker B loses page cache (data not flushed)
 Other ISR replicas still have data → partition safe
 
 Restart:
